@@ -70,4 +70,10 @@ public class AddressServiceImpl implements AddressService {
         addressRepository.deleteById(id);
 
     }
+
+    @Override
+    public Address getAddressByIdForUser(Long addressId, Long userId) {
+
+        return addressRepository.findByIdAndUserId(addressId,userId).orElseThrow(()-> new IllegalArgumentException("Address by user does not exists"));
+    }
 }

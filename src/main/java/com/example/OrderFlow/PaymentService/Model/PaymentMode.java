@@ -1,4 +1,6 @@
 package com.example.OrderFlow.PaymentService.Model;
 
-public class PaymentModel {
+public enum PaymentMode {
+    CARD,
+    UPI
 }

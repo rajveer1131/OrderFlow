@@ -1,4 +1,4 @@
-package com.example.OrderFlow.Exception;
+package com.example.OrderFlow.Common.Exception;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
