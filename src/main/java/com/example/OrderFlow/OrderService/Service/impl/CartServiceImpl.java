@@ -1,5 +1,7 @@
 package com.example.OrderFlow.OrderService.Service.impl;
 
+import com.example.OrderFlow.Common.Exception.InsufficientStockException;
+import com.example.OrderFlow.Common.Exception.ResourceNotFoundException;
 import com.example.OrderFlow.InventoryService.Models.Product;
 import com.example.OrderFlow.InventoryService.Repository.ProductRepository;
 import com.example.OrderFlow.InventoryService.Service.ProductService;
@@ -56,9 +58,9 @@ public class CartServiceImpl implements CartService {
     public CartResponseDTO addItemToCart(Long userId,CartItemRequestDTO cartItemRequestDTO) {
 
         Product product = productRepository.findById(cartItemRequestDTO.getProductId()).orElseThrow(
-                ()-> new IllegalArgumentException("Product does not exist"));
+                ()-> new ResourceNotFoundException("Product does not exist with id:"+cartItemRequestDTO.getProductId()));
         if(!product.isActive()){
-            throw new IllegalArgumentException("Product is not active");
+            throw new ResourceNotFoundException("Product is not active");
         }
         if (cartItemRequestDTO.getQuantity() <= 0) {
             throw new IllegalArgumentException("Quantity must be greater than 0");
@@ -82,7 +84,7 @@ public class CartServiceImpl implements CartService {
                     cartItem.getQuantity() + cartItemRequestDTO.getQuantity();
 
             if (newQuantity > product.getStockQuantity()) {
-                throw new IllegalArgumentException("Insufficient stock");
+                throw new InsufficientStockException("Insufficient stock");
             }
 
             cartItem.setQuantity(newQuantity);
@@ -91,7 +93,7 @@ public class CartServiceImpl implements CartService {
         } else {
 
             if (cartItemRequestDTO.getQuantity() > product.getStockQuantity()) {
-                throw new IllegalArgumentException("Insufficient stock");
+                throw new InsufficientStockException("Insufficient stock");
             }
 
             CartItem cartItem = new CartItem();
@@ -110,6 +112,7 @@ public class CartServiceImpl implements CartService {
 
     }
 
+    @Transactional
     private Cart getOrCreateCartByUserId(Long userId) {
         return cartRepository.findByUserId(userId)
                 .orElseGet(() -> cartRepository.save(Cart.builder()
@@ -122,17 +125,17 @@ public class CartServiceImpl implements CartService {
     @Transactional
     public CartResponseDTO updateItemQuantity(Long userId, CartItemRequestDTO cartItemRequestDTO) {
         Cart cart = cartRepository.findByUserId(userId).orElseThrow(
-                ()-> new IllegalArgumentException("Cart by user does not exist")
+                ()-> new ResourceNotFoundException("Cart by user does not exist")
         );
         CartItem item = cartItemRepository.findByCartIdAndProductId(cart.getId(), cartItemRequestDTO.getProductId())
-                .orElseThrow(() -> new RuntimeException("Product not found in cart: " + cartItemRequestDTO.getProductId()));
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found in cart: " + cartItemRequestDTO.getProductId()));
 
         if (cartItemRequestDTO.getQuantity() <= 0) {
             cart.removeItem(item);
 
         }
         else if(cartItemRequestDTO.getQuantity()> item.getProduct().getStockQuantity()){
-            throw new IllegalArgumentException("Product quantity is less than specified quantity");
+            throw new InsufficientStockException("Product quantity is less than specified quantity");
         }
         else {
             item.setQuantity(cartItemRequestDTO.getQuantity());
@@ -148,10 +151,10 @@ public class CartServiceImpl implements CartService {
     @Transactional
     public CartResponseDTO removeItemFromCart(Long userId, Long productId) {
         Cart cart = cartRepository.findByUserId(userId).orElseThrow(
-                ()-> new IllegalArgumentException("Cart by user does not exist")
+                ()-> new ResourceNotFoundException("Cart by user does not exist")
         );
         CartItem item = cartItemRepository.findByCartIdAndProductId(cart.getId(), productId)
-                .orElseThrow(() -> new RuntimeException("Product not found in cart: " + productId));
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found in cart: " + productId));
 
         cart.removeItem(item);
 
@@ -163,7 +166,7 @@ public class CartServiceImpl implements CartService {
     @Transactional
     public void clearCart(Long userId) {
         Cart cart = cartRepository.findByUserId(userId).orElseThrow(
-                ()-> new IllegalArgumentException("Cart by user does not exist")
+                ()-> new ResourceNotFoundException("Cart by user does not exist")
         );
         cart.clearItems();
         cart.recalculateTotal();

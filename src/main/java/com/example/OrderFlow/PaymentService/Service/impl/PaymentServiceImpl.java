@@ -1,9 +1,9 @@
 package com.example.OrderFlow.PaymentService.Service.impl;
 
+import com.example.OrderFlow.Common.Exception.DuplicateResourceException;
 import com.example.OrderFlow.PaymentService.DTO.PaymentRequestDTO;
 import com.example.OrderFlow.PaymentService.DTO.PaymentResponseDTO;
 import com.example.OrderFlow.PaymentService.Model.Payment;
-import com.example.OrderFlow.PaymentService.Model.PaymentMode;
 import com.example.OrderFlow.PaymentService.Model.PaymentStatus;
 import com.example.OrderFlow.PaymentService.Repository.PaymentRepository;
 import com.example.OrderFlow.PaymentService.Service.PaymentService;
@@ -59,9 +59,9 @@ public class PaymentServiceImpl implements PaymentService {
             }
 
             generatedRef = ref.toString();
-        }while(paymentRepository.existByTransactionReference(generatedRef) && retry>0);
-        if (retry == 0 && paymentRepository.existByTransactionReference(generatedRef)) {
-            throw new IllegalStateException("Unable to generate unique transaction reference");
+        }while(paymentRepository.existsByTransactionReference(generatedRef) && retry>0);
+        if (retry == 0 && paymentRepository.existsByTransactionReference(generatedRef)) {
+            throw new DuplicateResourceException("Unable to generate unique transaction reference");
         }
         return generatedRef;
     }

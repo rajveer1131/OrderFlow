@@ -1,5 +1,7 @@
 package com.example.OrderFlow.InventoryService.Service.impl;
 
+import com.example.OrderFlow.Common.Exception.DuplicateResourceException;
+import com.example.OrderFlow.Common.Exception.ResourceNotFoundException;
 import com.example.OrderFlow.InventoryService.DTO.ProductMapper;
 import com.example.OrderFlow.InventoryService.DTO.RequestDTO.ProductRequestDTO;
 import com.example.OrderFlow.InventoryService.DTO.ResponseDTO.ProductResponseDTO;
@@ -32,7 +34,7 @@ public class ProductServiceImpl implements ProductService {
     @Transactional
     public ProductResponseDTO createProduct(ProductRequestDTO productRequestDTO) {
         Category category = categoryRepository.findById(productRequestDTO.getCategoryId())
-                .orElseThrow(()->new IllegalArgumentException("Category does not exist"));
+                .orElseThrow(()->new ResourceNotFoundException("Category does not exist"));
         String sku = generateSku();
 
         Product product = productMapper.toEntity(productRequestDTO,sku,category);
@@ -47,11 +49,11 @@ public class ProductServiceImpl implements ProductService {
 
         Product product = productRepository.findById(id)
                 .orElseThrow(() ->
-                        new IllegalArgumentException("Product does not exist"));
+                        new ResourceNotFoundException("Product does not exist with id: "+id));
 
         Category category = categoryRepository.findById(productRequestDTO.getCategoryId())
                 .orElseThrow(() ->
-                        new IllegalArgumentException("Category does not exist"));
+                        new ResourceNotFoundException("Category does not exist with id: "+productRequestDTO.getCategoryId()));
 
         if (productRequestDTO.getName() != null) {
             product.setName(productRequestDTO.getName());
@@ -95,7 +97,7 @@ public class ProductServiceImpl implements ProductService {
         generatedSku = sku.toString();
         }while(productRepository.existsBySku(generatedSku) && retry>0);
         if (retry == 0 && productRepository.existsBySku(generatedSku)) {
-            throw new IllegalStateException("Unable to generate unique SKU");
+            throw new DuplicateResourceException("Unable to generate unique SKU");
         }
         return generatedSku;
     }
@@ -104,17 +106,16 @@ public class ProductServiceImpl implements ProductService {
     public ProductResponseDTO getProductById(Long id) {
 
         Product product = productRepository.findById(id).orElseThrow(
-                ()-> new IllegalArgumentException("Product does not exists"));
+                ()-> new ResourceNotFoundException("Product does not exist with id: "+id));
         return productMapper.toResponse(product);
     }
 
     @Override
     @Transactional
     public void deleteProduct(Long id) {
-        productRepository.findById(id).orElseThrow(
-                ()->   new IllegalArgumentException("Product does not exists"));
-        //TODO: to handle product sof delete
-        productRepository.deleteById(id);
+        Product product = productRepository.findById(id).orElseThrow(
+                ()->   new ResourceNotFoundException("Product does not exist with id: "+id));
+        product.setActive(false);
     }
 
     @Override
@@ -128,7 +129,7 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public ProductResponseDTO getProductBySku(String sku) {
-        Product product = productRepository.findBySku(sku).orElseThrow(()->new IllegalArgumentException("Product does not exist"));
+        Product product = productRepository.findBySku(sku).orElseThrow(()->new ResourceNotFoundException("Product does not exist with sku: "+sku));
         return productMapper.toResponse(product);
     }
 
@@ -142,14 +143,14 @@ public class ProductServiceImpl implements ProductService {
     public Product getProductEntityById(Long id) {
 
         return  productRepository.findById(id).orElseThrow(
-                ()-> new IllegalArgumentException("Product does not exists"));
+                ()-> new ResourceNotFoundException("Product does not exist with id: "+id));
     }
 
     @Override
     @Transactional
     public void restoreStock(Long id, Integer stockQty) {
         Product product = productRepository.findById(id).orElseThrow(
-                ()-> new IllegalArgumentException("Product with this id does not exists"));
+                ()-> new ResourceNotFoundException("Product does not exist with id: "+id));
         product.setStockQuantity(product.getStockQuantity()+stockQty);
 
     }

@@ -1,5 +1,8 @@
 package com.example.OrderFlow.OrderService.Service.impl;
 
+import com.example.OrderFlow.Common.Exception.InsufficientStockException;
+import com.example.OrderFlow.Common.Exception.InvalidOrderStateException;
+import com.example.OrderFlow.Common.Exception.ResourceNotFoundException;
 import com.example.OrderFlow.InventoryService.Models.Product;
 import com.example.OrderFlow.InventoryService.Service.ProductService;
 import com.example.OrderFlow.OrderService.DTO.Mapper.OrderMapper;
@@ -48,7 +51,7 @@ public class OrderServiceImpl implements OrderService {
         Cart cart = cartService.getCartForCheckOut(userId);
 
         if(cart.getItems().isEmpty()){
-            throw new IllegalArgumentException("Cart is empty");
+            throw new InvalidOrderStateException("Cannot checkout with an empty cart");
         }
         Address address = addressService.getAddressByIdForUser(
                 shippingAddressId,
@@ -68,13 +71,13 @@ public class OrderServiceImpl implements OrderService {
                 .map(cartItem -> {
                     Product product = productService.getProductEntityById(cartItem.getProduct().getId());
                     if (!product.isActive()) {
-                        throw new IllegalArgumentException(
+                        throw new ResourceNotFoundException(
                                 "Product is no longer active: " + product.getId()
                         );
                     }
 
                     if (product.getStockQuantity() < cartItem.getQuantity()) {
-                        throw new IllegalArgumentException(
+                        throw new InsufficientStockException(
                                 "Insufficient stock for product: " + product.getId()
                         );
                     }
@@ -116,7 +119,7 @@ public class OrderServiceImpl implements OrderService {
                 .orderId(savedOrder.getId())
                 .paymentMode(PaymentMode.CARD)
                 .paymentAmount(savedOrder.getTotalAmount())
-                .simulatedPayment(true)
+                .simulatedPayment(false)
                 .build();
 
         PaymentResponseDTO paymentResponse =
@@ -159,7 +162,7 @@ public class OrderServiceImpl implements OrderService {
                 generatedNumber = number.toString();
             }while(orderRepository.existsByOrderNumber(generatedNumber) && retry>0);
             if (retry == 0 && orderRepository.existsByOrderNumber(generatedNumber)) {
-                throw new IllegalStateException("Unable to generate unique Order number");
+                throw new IllegalArgumentException("Unable to generate unique Order number");
             }
             return generatedNumber;
         }
@@ -168,7 +171,7 @@ public class OrderServiceImpl implements OrderService {
     @Override
     public OrderResponseDTO getOrderById(Long id) {
         Order order = orderRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Order not found with id: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + id));
         return orderMapper.toResponse(order);
     }
 
@@ -176,7 +179,7 @@ public class OrderServiceImpl implements OrderService {
     public OrderResponseDTO getOrderByOrderNumber(String orderNumber) {
 
         Order order = orderRepository.findByOrderNumber(orderNumber)
-                .orElseThrow(() -> new IllegalArgumentException("Order not found with order number: " + orderNumber));
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found with order number: " + orderNumber));
         return orderMapper.toResponse(order);
     }
 
@@ -197,7 +200,7 @@ public class OrderServiceImpl implements OrderService {
     @Transactional
     public OrderResponseDTO updateOrderStatus(Long orderId, OrderStatus status) {
         Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new IllegalArgumentException("Order not found with id: " + orderId));
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + orderId));
         validateStatusTransition(order.getStatus(),status);
         order.setStatus(status);
         return orderMapper.toResponse(order);
@@ -208,7 +211,7 @@ public class OrderServiceImpl implements OrderService {
             OrderStatus next
     ) {
         if (next == OrderStatus.CANCELLED) {
-            throw new IllegalStateException(
+            throw new InvalidOrderStateException(
                     "Use cancelOrder() to cancel an order"
             );
         }
@@ -227,7 +230,7 @@ public class OrderServiceImpl implements OrderService {
         };
 
         if (!valid) {
-            throw new IllegalStateException(
+            throw new InvalidOrderStateException(
                     String.format(
                             "Invalid order status transition: %s -> %s",
                             current,
@@ -242,23 +245,28 @@ public class OrderServiceImpl implements OrderService {
     public OrderResponseDTO cancelOrder(Long orderId) {
 
         Order order = orderRepository.findById(orderId).orElseThrow(
-                ()->new IllegalArgumentException("Order does not exists with this id"));
+                ()->new ResourceNotFoundException("Order does not exists with id: "+ orderId));
         if(order.getStatus() == OrderStatus.CANCELLED){
-            throw new IllegalArgumentException("Order Status is already cancelled");
+            throw new InvalidOrderStateException("Order Status is already cancelled");
         }
 
         if (order.getStatus() != OrderStatus.PENDING &&
                 order.getStatus() != OrderStatus.CONFIRMED) {
 
-            throw new IllegalStateException(
+            throw new InvalidOrderStateException(
                     "Only pending or confirmed orders can be cancelled"
             );
         }
 
+        // TODO: Need to implement Refund
+//        if(order.getStatus() == OrderStatus.CONFIRMED){
+//
+//        }
         order.getItems().forEach(orderItem -> {
             productService.restoreStock(orderItem.getProductId(), orderItem.getQuantity());
         });
         order.setStatus(OrderStatus.CANCELLED);
+
 
         return orderMapper.toResponse(order);
     }

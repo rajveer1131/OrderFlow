@@ -1,5 +1,6 @@
 package com.example.OrderFlow.UserService.Service.impl;
 
+import com.example.OrderFlow.Common.Exception.ResourceNotFoundException;
 import com.example.OrderFlow.UserService.DTO.AddressMapper;
 import com.example.OrderFlow.UserService.DTO.RequestDTO.AddressRequestDTO;
 import com.example.OrderFlow.UserService.DTO.ResponseDTO.AddressResponseDTO;
@@ -28,7 +29,7 @@ public class AddressServiceImpl implements AddressService {
 
     @Override
     public AddressResponseDTO createAddress(AddressRequestDTO addressRequestDTO ,Long id) {
-        User user = userRepository.findById(id).orElseThrow(()-> new IllegalArgumentException("User does not Exist"));
+        User user = userRepository.findById(id).orElseThrow(()-> new ResourceNotFoundException("User does not exists with id: "+id));
         Address address = addressMapper.toEntity(addressRequestDTO,user);
 
         return addressMapper.toResponse(addressRepository.save(address));
@@ -37,7 +38,7 @@ public class AddressServiceImpl implements AddressService {
     @Override
     public AddressResponseDTO updateAddress(AddressRequestDTO addressRequestDTO, Long addressId,Long userId) {
         Address address = addressRepository.findById(addressId)
-                .orElseThrow(() -> new IllegalArgumentException("Address does not exist"));
+                .orElseThrow(() -> new ResourceNotFoundException("Address does not exists with id: "+addressId));
 
         if(!address.getUser().getId().equals(userId)){
             throw  new IllegalArgumentException("Not authorized to modify this address");
@@ -65,7 +66,7 @@ public class AddressServiceImpl implements AddressService {
     public void deleteAddress(Long id) {
 
         if(!addressRepository.existsById(id)){
-            throw new IllegalArgumentException("Address does not exists");
+            throw new ResourceNotFoundException("Address does not exists with id: "+id);
         }
         addressRepository.deleteById(id);
 
@@ -74,6 +75,6 @@ public class AddressServiceImpl implements AddressService {
     @Override
     public Address getAddressByIdForUser(Long addressId, Long userId) {
 
-        return addressRepository.findByIdAndUserId(addressId,userId).orElseThrow(()-> new IllegalArgumentException("Address by user does not exists"));
+        return addressRepository.findByIdAndUserId(addressId,userId).orElseThrow(()-> new ResourceNotFoundException("Address  does not exists with userId: "+userId));
     }
 }

@@ -19,16 +19,6 @@ public class UserController {
         this.userService = userService;
     }
 
-    @PostMapping("/login")
-    public ResponseEntity<?> userLogin(@Valid @RequestBody UserLoginDTO userLoginDTO){
-        return ResponseEntity.ok(userService.userLogin(userLoginDTO));
-    }
-
-    @PostMapping("/signup")
-    public  ResponseEntity<?> userSignup(@Valid @RequestBody UserRegisterDTO userRegisterDTO){
-        return ResponseEntity.status(HttpStatus.CREATED).body(userService.UserCreate(userRegisterDTO));
-    }
-
     @DeleteMapping("{id}")
     public ResponseEntity<?> userDelete(@PathVariable Long id){
         userService.userDelete(id);

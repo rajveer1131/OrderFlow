@@ -1,6 +1,10 @@
 HELP.md
 target/
 .mvn/wrapper/maven-wrapper.jar
+
+# Local application configuration
+src/main/resources/application.properties
+
 !**/src/main/**/target/
 !**/src/test/**/target/
 

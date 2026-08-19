@@ -22,18 +22,17 @@ public class Payment extends AuditableBase {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "order_id",nullable = false, unique = true)
+    @Column(name = "order_id",nullable = false, unique = true)
     private Long orderId;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private PaymentStatus paymentStatus;
 
-    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private BigDecimal paymentAmount;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private PaymentMode paymentMode;
 

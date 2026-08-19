@@ -12,7 +12,7 @@ import java.util.Optional;
 public interface ProductRepository extends JpaRepository<Product, Long> {
     Optional<Product> findBySku(String sku);
     List<Product> findByCategoryId(Long categoryId);
-
+    boolean existsByCategoryId(Long id);
     boolean existsBySku(String sku);
 
     @Query("SELECT p FROM Product p WHERE p.stockQuantity <= p.lowStockThreshold")

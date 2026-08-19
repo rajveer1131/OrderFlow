@@ -46,6 +46,7 @@ public class Cart extends AuditableBase {
     public void removeItem(CartItem item){
         this.items.remove(item);
         item.setCart(null);
+        totalAmount = BigDecimal.ZERO;
     }
 
     public void clearItems() {
