@@ -127,7 +127,7 @@ public class OrderServiceImpl implements OrderService {
 
         if(paymentResponse.getPaymentStatus().equals(PaymentStatus.FAILED.name())){
             savedOrder.setPaymentStatus(PaymentStatus.FAILED);
-            cancelOrder(savedOrder.getId());
+            cancelOrder(savedOrder.getId(),userId);
 
         }else{
             savedOrder.setStatus(OrderStatus.CONFIRMED);
@@ -169,17 +169,25 @@ public class OrderServiceImpl implements OrderService {
 
 
     @Override
-    public OrderResponseDTO getOrderById(Long id) {
-        Order order = orderRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + id));
+    public OrderResponseDTO getOrderByIdForUser(Long id, Long userId) {
+        Order order = orderRepository
+                .findByIdAndUserId(id, userId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Order not found")
+                );
         return orderMapper.toResponse(order);
     }
 
     @Override
-    public OrderResponseDTO getOrderByOrderNumber(String orderNumber) {
+    public OrderResponseDTO getOrderByOrderNumberForUser(
+            String orderNumber,
+            Long userId
+    ) {
+        Order order = orderRepository
+                .findByOrderNumberAndUserId(orderNumber, userId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Order not found"));
 
-        Order order = orderRepository.findByOrderNumber(orderNumber)
-                .orElseThrow(() -> new ResourceNotFoundException("Order not found with order number: " + orderNumber));
         return orderMapper.toResponse(order);
     }
 
@@ -242,10 +250,13 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional
-    public OrderResponseDTO cancelOrder(Long orderId) {
+    public OrderResponseDTO cancelOrder(Long orderId,Long userId) {
 
-        Order order = orderRepository.findById(orderId).orElseThrow(
-                ()->new ResourceNotFoundException("Order does not exists with id: "+ orderId));
+        Order order = orderRepository
+                .findByIdAndUserId(orderId, userId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Order not found")
+                );
         if(order.getStatus() == OrderStatus.CANCELLED){
             throw new InvalidOrderStateException("Order Status is already cancelled");
         }

@@ -1,11 +1,13 @@
 package com.example.OrderFlow.UserService.Controller;
 
+import com.example.OrderFlow.Config.Security.CustomUserDetails;
 import com.example.OrderFlow.UserService.DTO.RequestDTO.UserLoginDTO;
 import com.example.OrderFlow.UserService.DTO.RequestDTO.UserRegisterDTO;
 import com.example.OrderFlow.UserService.Service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -19,14 +21,14 @@ public class UserController {
         this.userService = userService;
     }
 
-    @DeleteMapping("{id}")
-    public ResponseEntity<?> userDelete(@PathVariable Long id){
-        userService.userDelete(id);
+    @DeleteMapping("/delete")
+    public ResponseEntity<?> userDelete(@AuthenticationPrincipal CustomUserDetails userDetails){
+        userService.userDelete(userDetails.getUserId());
         return ResponseEntity.ok("User Delete successfully");
     }
 
-    @PutMapping("{id}")
-    public ResponseEntity<?> userUpdate(@Valid @RequestBody UserRegisterDTO userRegisterDTO,@PathVariable Long id){
-        return ResponseEntity.ok(userService.userUpdate(userRegisterDTO,id));
+    @PutMapping("/update")
+    public ResponseEntity<?> userUpdate(@Valid @RequestBody UserRegisterDTO userRegisterDTO,@AuthenticationPrincipal CustomUserDetails userDetails){
+        return ResponseEntity.ok(userService.userUpdate(userRegisterDTO, userDetails.getUserId()));
     }
 }

@@ -37,12 +37,9 @@ public class AddressServiceImpl implements AddressService {
 
     @Override
     public AddressResponseDTO updateAddress(AddressRequestDTO addressRequestDTO, Long addressId,Long userId) {
-        Address address = addressRepository.findById(addressId)
-                .orElseThrow(() -> new ResourceNotFoundException("Address does not exists with id: "+addressId));
+        Address address = addressRepository.findByIdAndUserId(addressId,userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Selected Address does not exist for user"));
 
-        if(!address.getUser().getId().equals(userId)){
-            throw  new IllegalArgumentException("Not authorized to modify this address");
-        }
 
         if (addressRequestDTO.getStreet() != null) {
             address.setStreet(addressRequestDTO.getStreet());
@@ -63,13 +60,17 @@ public class AddressServiceImpl implements AddressService {
         return addressMapper.toResponse(address);
     }
     @Override
-    public void deleteAddress(Long id) {
+    public void deleteAddress(Long addressId, Long userId) {
 
-        if(!addressRepository.existsById(id)){
-            throw new ResourceNotFoundException("Address does not exists with id: "+id);
-        }
-        addressRepository.deleteById(id);
+        Address address = addressRepository
+                .findByIdAndUserId(addressId, userId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Selected address does not exist for user"
+                        )
+                );
 
+        addressRepository.delete(address);
     }
 
     @Override

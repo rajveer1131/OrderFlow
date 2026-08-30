@@ -12,7 +12,7 @@ public interface AddressService {
 
     public AddressResponseDTO updateAddress(AddressRequestDTO addressRequestDTO, Long addressId,Long userId);
 
-    public void deleteAddress(Long id);
+    public void deleteAddress(Long id,Long userId);
 
     public Address getAddressByIdForUser(Long addressId,Long userId);
 }

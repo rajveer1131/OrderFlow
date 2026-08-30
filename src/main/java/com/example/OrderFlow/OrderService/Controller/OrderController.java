@@ -1,11 +1,11 @@
 package com.example.OrderFlow.OrderService.Controller;
 
+import com.example.OrderFlow.Config.Security.CustomUserDetails;
 import com.example.OrderFlow.OrderService.Model.OrderStatus;
 import com.example.OrderFlow.OrderService.Service.OrderService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/orders")
@@ -18,42 +18,64 @@ public class OrderController {
     }
 
     @PostMapping("/checkout")
-    public ResponseEntity<?> checkoutCart(@RequestParam Long userId,
-                                               @RequestParam(required = false) Long shippingAddressId) {
-        return ResponseEntity.ok(orderService.checkout(userId, shippingAddressId));
+    public ResponseEntity<?> checkoutCart(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam Long shippingAddressId
+    ) {
+        return ResponseEntity.ok(
+                orderService.checkout(
+                        userDetails.getUserId(),
+                        shippingAddressId
+                )
+        );
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<?> getOrderById(@PathVariable Long id) {
-
-        return ResponseEntity.ok(orderService.getOrderById(id));
+    public ResponseEntity<?> getOrderById(
+            @PathVariable Long id,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        return ResponseEntity.ok(
+                orderService.getOrderByIdForUser(
+                        id,
+                        userDetails.getUserId()
+                )
+        );
     }
 
     @GetMapping("/number/{orderNumber}")
-    public ResponseEntity<?> getOrderByOrderNumber(@PathVariable String orderNumber) {
-        return ResponseEntity.ok(orderService.getOrderByOrderNumber(orderNumber));
+    public ResponseEntity<?> getOrderByOrderNumber(
+            @PathVariable String orderNumber,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        return ResponseEntity.ok(
+                orderService.getOrderByOrderNumberForUser(
+                        orderNumber,
+                        userDetails.getUserId()
+                )
+        );
     }
 
-    @GetMapping("/user/{userId}")
-    public ResponseEntity<?> getOrdersByUserId(@PathVariable Long userId) {
-        return ResponseEntity.ok(orderService.getOrdersByUserId(userId));
-    }
-
-    @GetMapping("/status/{status}")
-    public ResponseEntity<?> getOrdersByStatus(@PathVariable OrderStatus status) {
-
-        return ResponseEntity.ok(orderService.getOrdersByStatus(status));
-    }
-
-    @PatchMapping("/{id}/status")
-    public ResponseEntity<?> updateOrderStatus(@PathVariable Long id,
-                                                   @RequestParam OrderStatus status) {
-
-        return ResponseEntity.ok(orderService.updateOrderStatus(id, status));
+    @GetMapping
+    public ResponseEntity<?> getMyOrders(
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        return ResponseEntity.ok(
+                orderService.getOrdersByUserId(
+                        userDetails.getUserId()
+                )
+        );
     }
 
     @PatchMapping("/{id}/cancel")
-    public ResponseEntity<?> cancelOrder(@PathVariable Long id) {
-        return ResponseEntity.ok(orderService.cancelOrder(id));
+    public ResponseEntity<?> cancelOrder(
+            @PathVariable Long id,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        return ResponseEntity.ok(
+                orderService.cancelOrder(id,
+                        userDetails.getUserId()
+                )
+        );
     }
 }
