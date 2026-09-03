@@ -7,6 +7,8 @@ import com.example.OrderFlow.InventoryService.Models.Product;
 import com.example.OrderFlow.InventoryService.Service.ProductService;
 import com.example.OrderFlow.OrderService.DTO.Mapper.OrderMapper;
 import com.example.OrderFlow.OrderService.DTO.ResponseDTO.OrderResponseDTO;
+import com.example.OrderFlow.OrderService.Event.OrderEventProducer;
+import com.example.OrderFlow.OrderService.Event.OrderStatusChangedEvent;
 import com.example.OrderFlow.OrderService.Model.*;
 import com.example.OrderFlow.OrderService.Repository.OrderRepository;
 import com.example.OrderFlow.OrderService.Service.CartService;
@@ -18,6 +20,8 @@ import com.example.OrderFlow.PaymentService.Model.PaymentMode;
 import com.example.OrderFlow.PaymentService.Model.PaymentStatus;
 import com.example.OrderFlow.PaymentService.Service.PaymentService;
 import com.example.OrderFlow.UserService.Model.Address;
+import com.example.OrderFlow.UserService.Model.User;
+import com.example.OrderFlow.UserService.Repository.UserRepository;
 import com.example.OrderFlow.UserService.Service.AddressService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,14 +39,18 @@ public class OrderServiceImpl implements OrderService {
     private final OrderMapper orderMapper;
     private final AddressService addressService;
     private final PaymentService paymentService;
+    private final OrderEventProducer orderEventProducer;
+    private final UserRepository userRepository;
 
-    public OrderServiceImpl(OrderRepository orderRepository, CartService cartService, ProductService productService,OrderMapper orderMapper,AddressService addressService,PaymentService paymentService) {
+    public OrderServiceImpl(OrderRepository orderRepository, CartService cartService, ProductService productService,OrderMapper orderMapper,AddressService addressService,PaymentService paymentService,OrderEventProducer orderEventProducer,UserRepository userRepository) {
         this.orderRepository = orderRepository;
         this.cartService = cartService;
         this.productService = productService;
         this.orderMapper = orderMapper;
         this.addressService = addressService;
         this.paymentService = paymentService;
+        this.orderEventProducer = orderEventProducer;
+        this.userRepository = userRepository;
     }
 
     @Override
@@ -119,21 +127,31 @@ public class OrderServiceImpl implements OrderService {
                 .orderId(savedOrder.getId())
                 .paymentMode(PaymentMode.CARD)
                 .paymentAmount(savedOrder.getTotalAmount())
-                .simulatedPayment(false)
+                .simulatedPayment(true)
                 .build();
 
         PaymentResponseDTO paymentResponse =
                 paymentService.processPayment(paymentRequest);
 
+        User user = userRepository.findById(userId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("User not found")
+                );
+
+        String email = user.getEmail();
+
         if(paymentResponse.getPaymentStatus().equals(PaymentStatus.FAILED.name())){
             savedOrder.setPaymentStatus(PaymentStatus.FAILED);
             cancelOrder(savedOrder.getId(),userId);
 
+
         }else{
             savedOrder.setStatus(OrderStatus.CONFIRMED);
             savedOrder.setPaymentStatus(PaymentStatus.SUCCESS);
-        }
 
+
+        }
+        publishOrderStatusEvent(savedOrder,email);
 
 
         return orderMapper.toResponse(savedOrder);
@@ -168,6 +186,21 @@ public class OrderServiceImpl implements OrderService {
         }
 
 
+    private void publishOrderStatusEvent(
+            Order order,
+            String email
+    ) {
+        OrderStatusChangedEvent event =
+                OrderStatusChangedEvent.builder()
+                        .orderId(order.getId())
+                        .userId(order.getUserId())
+                        .email(email)
+                        .orderNumber(order.getOrderNumber())
+                        .orderStatus(order.getStatus().name())
+                        .build();
+
+        orderEventProducer.publishOrderStatusChanged(event);
+    }
     @Override
     public OrderResponseDTO getOrderByIdForUser(Long id, Long userId) {
         Order order = orderRepository
@@ -211,6 +244,8 @@ public class OrderServiceImpl implements OrderService {
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + orderId));
         validateStatusTransition(order.getStatus(),status);
         order.setStatus(status);
+
+        //publishOrderStatusEvent(order,); // TODO will ADD Later
         return orderMapper.toResponse(order);
     }
 
