@@ -1,0 +1,6 @@
+services:
+  kafka:
+    image: apache/kafka:latest
+    container_name: orderflow-kafka
+    ports:
+      - "9092:9092"
