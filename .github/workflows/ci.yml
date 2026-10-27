@@ -1,0 +1,67 @@
+name: TestLens CI Pipeline
+
+on:
+  pull_request:
+    branches: [ main, master ]
+  push:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      # Step 1: Run your automated tests
+      - name: Run Spring Boot Tests
+        id: run_tests
+        run: |
+          # Runs maven tests (or wrapper if present)
+          if [ -f "./mvnw" ]; then
+            ./mvnw clean test
+          else
+            mvn clean test
+          fi
+
+      # Step 2: Auto-Triage ONLY when a test fails!
+      - name: TestLens AI Auto-Triage
+        if: failure()
+        env:
+          TESTLENS_URL: ${{ secrets.TESTLENS_WEBHOOK_URL }}
+          TESTLENS_TOKEN: ${{ secrets.TESTLENS_WEBHOOK_SECRET }}
+        run: |
+          echo "=========================================="
+          echo "❌ Test failure detected! Triggering TestLens AI..."
+          echo "=========================================="
+          
+          # Extract Git Diff of the latest commit
+          GIT_DIFF=$(git diff HEAD~1 HEAD 2>/dev/null || echo "No git diff available")
+          
+          # Extract Error Log from surefire reports
+          ERROR_LOG=$(tail -n 80 target/surefire-reports/*.txt 2>/dev/null || echo "Maven test execution failed")
+          
+          # Call your Azure Function Webhook
+          RESPONSE=$(curl -s -X POST "$TESTLENS_URL" \
+            -H "Content-Type: application/json" \
+            -H "X-TestLens-Token: $TESTLENS_TOKEN" \
+            -d "{
+              \"repository\": \"${{ github.repository }}\",
+              \"commit_sha\": \"${{ github.sha }}\",
+              \"error_message\": \"CI Pipeline Test Failure\",
+              \"stack_trace\": $(echo "$ERROR_LOG" | jq -s -R .),
+              \"git_diff\": $(echo "$GIT_DIFF" | jq -s -R .)
+            }")
+
+          echo "=========================================="
+          echo "🤖 TESTLENS AI AUTONOMOUS DIAGNOSTIC REPORT:"
+          echo "=========================================="
+          echo "$RESPONSE" | jq .
