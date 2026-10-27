@@ -25,7 +25,7 @@ jobs:
       - name: Run Spring Boot Tests
         id: run_tests
         run: |
-          # Runs maven tests (or wrapper if present)
+          chmod +x ./mvnw 2>/dev/null || true
           if [ -f "./mvnw" ]; then
             ./mvnw clean test
           else
